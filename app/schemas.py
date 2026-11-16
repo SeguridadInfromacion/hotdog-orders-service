@@ -9,7 +9,13 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_vali
 MAX_QUANTITY_PER_ITEM = 20
 MAX_ITEMS_PER_ORDER = 20
 
-CustomerName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=60)]
+# Sin caracteres de control (saltos de línea, NUL...): no sirven en un nombre y
+# permitirían falsificar líneas del log o provocar errores en la base.
+PRINTABLE = r"^[^\x00-\x1f\x7f]*$"
+
+CustomerName = Annotated[
+    str, StringConstraints(strip_whitespace=True, max_length=60, pattern=PRINTABLE)
+]
 
 
 class StrictModel(BaseModel):

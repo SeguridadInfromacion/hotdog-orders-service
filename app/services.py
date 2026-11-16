@@ -7,17 +7,19 @@ from datetime import timedelta
 from sqlalchemy.orm import Session
 
 from app.database import utcnow
-from app.dependencies import AuthenticatedUser
 from app.errors import Unprocessable
 from app.models import Order, OrderItem
-from app.products_client import ProductsGateway
+from app.products_client import Menu, ProductsGateway
 from app.repositories import AuditRepository, OrderRepository
 from app.schemas import OrderIn, OrderItemIn, SummaryOut
+from app.security import AuthenticatedUser
 
 SUMMARY_WINDOW = timedelta(hours=24)
 
 
-class OrderService:
+class SalesRegister:
+    """Registra ventas. Los precios salen del menú oficial, nunca del cliente."""
+
     def __init__(self, session: Session, products: ProductsGateway) -> None:
         self._session = session
         self._products = products
@@ -25,7 +27,8 @@ class OrderService:
         self._audit = AuditRepository(session)
 
     def create_order(self, data: OrderIn, *, user: AuthenticatedUser, ip: str) -> Order:
-        items = [self._price_item(item, user.token) for item in data.items]
+        menu = self._products.get_menu(user.token)
+        items = [self._price_item(item, menu) for item in data.items]
         order = Order(
             cashier_id=user.id,
             cashier_username=user.username,
@@ -43,9 +46,10 @@ class OrderService:
         self._session.commit()
         return order
 
-    def _price_item(self, item: OrderItemIn, token: str) -> OrderItem:
+    @staticmethod
+    def _price_item(item: OrderItemIn, menu: Menu) -> OrderItem:
         """Arma un renglón con el nombre y el precio OFICIALES del menú."""
-        product = self._products.get_product(item.product_id, token)
+        product = menu.get(item.product_id)
         if product is None:
             raise Unprocessable("Uno de los productos ya no existe en el menú.")
         if not product.is_available:
@@ -58,6 +62,13 @@ class OrderService:
             line_total=product.price * item.quantity,
         )
 
+
+class SalesHistory:
+    """Consulta de ventas. El administrador ve todas; un cajero, solo las suyas."""
+
+    def __init__(self, session: Session) -> None:
+        self._orders = OrderRepository(session)
+
     def list_orders(self, user: AuthenticatedUser) -> Sequence[Order]:
         return self._orders.list_recent(cashier_id=self._scope(user))
 
@@ -69,5 +80,4 @@ class OrderService:
 
     @staticmethod
     def _scope(user: AuthenticatedUser) -> uuid.UUID | None:
-        """El administrador ve todas las ventas; un cajero, solo las suyas."""
         return None if user.is_admin else user.id

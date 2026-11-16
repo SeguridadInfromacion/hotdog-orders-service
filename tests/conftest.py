@@ -55,11 +55,11 @@ class FakeMenu:
         self.products[product.id] = product
         return str(product.id)
 
-    def get_product(self, product_id: uuid.UUID, token: str) -> ProductInfo | None:
+    def get_menu(self, token: str) -> dict[uuid.UUID, ProductInfo]:
         self.tokens_seen.append(token)
         if self.is_down:
             raise ServiceUnavailable("El menú no está disponible.")
-        return self.products.get(product_id)
+        return dict(self.products)
 
 
 def make_token(role: str, username: str, user_id: uuid.UUID | None = None) -> str:

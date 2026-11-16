@@ -29,10 +29,13 @@ Una venta se envía así. No lleva precios:
 
 - **El servidor pone los precios.** El cliente solo dice qué y cuánto. Cualquier
   campo extra (`unit_price`, `total`) hace que la petición se rechace.
-- **Comunicación entre servicios autenticada.** Al consultar a
-  `products-service` se reenvía el token del usuario, y ese servicio lo vuelve a verificar.
+- **Comunicación entre servicios autenticada.** El menú se pide a
+  `products-service` en una sola llamada, reenviando el token del usuario, y ese
+  servicio lo vuelve a verificar.
 - **Desconfía de la respuesta ajena.** Lo que responde `products-service` se
-  valida antes de usarse; si no cuadra, la venta falla con un 503 limpio.
+  valida con límites (precio positivo y acotado, nombre con longitud máxima);
+  si no cuadra, la venta falla con un 503 limpio.
+- **No puede alterar el pasado.** Su rol en la base solo inserta y lee ventas.
 - **Aislamiento entre cajeros.** El filtro por cajero se aplica en el servidor
   con el id del token.
 - **Ventas inmutables frente al menú.** Cada renglón guarda nombre y precio del

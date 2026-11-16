@@ -8,7 +8,7 @@ from app.dependencies import AdminUser, ClientIp, CurrentUser, SessionDep
 from app.products_client import ProductsGateway, get_products_gateway
 from app.repositories import AuditRepository
 from app.schemas import AuditOut, OrderIn, OrderOut, SummaryOut
-from app.services import OrderService
+from app.services import SalesHistory, SalesRegister
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -19,19 +19,18 @@ ProductsDep = Annotated[ProductsGateway, Depends(get_products_gateway)]
 def create_order(
     data: OrderIn, user: CurrentUser, session: SessionDep, products: ProductsDep, ip: ClientIp
 ) -> OrderOut:
-    order = OrderService(session, products).create_order(data, user=user, ip=ip)
+    order = SalesRegister(session, products).create_order(data, user=user, ip=ip)
     return OrderOut.model_validate(order)
 
 
 @router.get("", response_model=list[OrderOut])
-def list_orders(user: CurrentUser, session: SessionDep, products: ProductsDep) -> list[OrderOut]:
-    orders = OrderService(session, products).list_orders(user)
-    return [OrderOut.model_validate(order) for order in orders]
+def list_orders(user: CurrentUser, session: SessionDep) -> list[OrderOut]:
+    return [OrderOut.model_validate(order) for order in SalesHistory(session).list_orders(user)]
 
 
 @router.get("/summary", response_model=SummaryOut)
-def summary(user: CurrentUser, session: SessionDep, products: ProductsDep) -> SummaryOut:
-    return OrderService(session, products).summary(user)
+def summary(user: CurrentUser, session: SessionDep) -> SummaryOut:
+    return SalesHistory(session).summary(user)
 
 
 @router.get("/audit", response_model=list[AuditOut])

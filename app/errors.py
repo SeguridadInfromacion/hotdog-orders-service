@@ -21,16 +21,6 @@ class PermissionDenied(AppError):
     detail = "No tienes permiso para hacer esto."
 
 
-class NotFound(AppError):
-    status_code = 404
-    detail = "No encontrado."
-
-
-class Conflict(AppError):
-    status_code = 409
-    detail = "Ya existe."
-
-
 class Unprocessable(AppError):
     status_code = 422
     detail = "No se puede procesar la solicitud."
